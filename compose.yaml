@@ -1,5 +1,6 @@
 volumes:
   oncall-logs:
+  oncall-mailpit:
 name: oncall-lab
 services:
   metadata:
@@ -77,6 +78,19 @@ services:
       - "127.0.0.1:23090:9090"
     restart: unless-stopped
 
+  # Local SMTP capture, NOT a real email sender.
+  # Web UI is loopback only; SMTP is reachable only inside Docker.
+  mailpit:
+    image: axllent/mailpit:v1.33.0
+    environment:
+      MP_DATABASE: "/data/mailpit.db"
+      MP_MAX_MESSAGES: "1000"
+    volumes:
+      - oncall-mailpit:/data
+    ports:
+      - "127.0.0.1:28025:8025"
+    restart: unless-stopped
+
   grafana:
     image: grafana/grafana:12.1.1
     environment:
@@ -89,6 +103,14 @@ services:
       GF_UNIFIED_ALERTING_STATE_HISTORY_ENABLED: "true"
       GF_UNIFIED_ALERTING_STATE_HISTORY_BACKEND: "loki"
       GF_UNIFIED_ALERTING_STATE_HISTORY_LOKI_REMOTE_URL: "http://loki:3100"
+      # Actual SMTP delivery to a local capture server; nothing leaves Docker.
+      GF_SMTP_ENABLED: "true"
+      GF_SMTP_HOST: "mailpit:1025"
+      GF_SMTP_STARTTLS_POLICY: "NoStartTLS"
+      GF_SMTP_FROM_ADDRESS: "alerts@oncall-lab.test"
+      GF_SMTP_FROM_NAME: "Oncall Lab (Synthetic)"
+      # Links embedded in notifications must point to the host-visible console.
+      GF_SERVER_ROOT_URL: "http://127.0.0.1:23000/"
     volumes:
       - ./observability/grafana/provisioning:/etc/grafana/provisioning:ro
       - ./observability/grafana/dashboards:/etc/grafana/dashboards:ro
@@ -96,6 +118,7 @@ services:
       - prometheus
       - loki
       - tempo
+      - mailpit
     ports:
       - "127.0.0.1:23000:3000"
     restart: unless-stopped

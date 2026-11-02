@@ -1,0 +1,22 @@
+# Real Grafana email delivery into local-only Mailpit. No external recipient.
+apiVersion: 1
+contactPoints:
+  - orgId: 1
+    name: oncall-lab-local-inbox
+    receivers:
+      - uid: oncall_lab_local_email
+        type: email
+        disableResolveMessage: false
+        settings:
+          addresses: "oncall@example.test"
+          singleEmail: true
+
+# Dedicated synthetic lab: all its alerts are routed to the local inbox.
+# This does not alter the user's real Grafana or any production Alertmanager.
+policies:
+  - orgId: 1
+    receiver: oncall-lab-local-inbox
+    group_by: ["grafana_folder", "alertname"]
+    group_wait: 5s
+    group_interval: 1m
+    repeat_interval: 4h

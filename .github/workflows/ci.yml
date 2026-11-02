@@ -41,11 +41,20 @@ jobs:
           GRAFANA_ADMIN_PASSWORD: ci-only-placeholder
         run: |
           docker compose -f compose.yaml -f compose.zones.yaml build metadata gateway
-          docker compose -f compose.yaml -f compose.zones.yaml up -d --no-build promtail tempo metadata-zone-a1 gateway-zone-a1
+          docker compose -f compose.yaml -f compose.zones.yaml up -d --no-build promtail tempo mailpit grafana metadata-zone-a1 gateway-zone-a1
           for i in $(seq 1 20); do
             if curl -fsS http://127.0.0.1:28081/healthz; then break; fi
             sleep 2
           done
+          # Contact-point delivery configuration must load in the actual Grafana.
+          for i in $(seq 1 30); do
+            if curl -fsS http://127.0.0.1:23000/api/health > /dev/null && curl -fsS http://127.0.0.1:28025/api/v1/info > /dev/null; then break; fi
+            sleep 2
+          done
+          curl -fsS -u "demo:$GRAFANA_ADMIN_PASSWORD" http://127.0.0.1:23000/api/v1/provisioning/contact-points |
+            python3 -c 'import json,sys;items=json.load(sys.stdin);assert any(x.get("name")=="oncall-lab-local-inbox" and x.get("type")=="email" for x in items)'
+          curl -fsS -u "demo:$GRAFANA_ADMIN_PASSWORD" http://127.0.0.1:23000/api/v1/provisioning/policies |
+            python3 -c 'import json,sys;cfg=json.load(sys.stdin);assert cfg["receiver"]=="oncall-lab-local-inbox"'
           curl -fsS 'http://127.0.0.1:28081/metadata?id=ci'
           test "$(curl -sS -o /dev/null -w '%{http_code}' 'http://127.0.0.1:28081/metadata?id=ci&delay_ms=1500')" = 504
           test "$(curl -sS -o /dev/null -w '%{http_code}' 'http://127.0.0.1:28081/metadata?id=synthetic-application-error')" = 502

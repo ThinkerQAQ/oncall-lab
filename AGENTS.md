@@ -66,6 +66,16 @@ This scenario is not a substitute for Kubernetes rolling-updates or discovery-co
 
 ## Reproducible experiment scenarios
 
+- Reproduce actual alert delivery, not merely a Grafana Firing state:
+  run scripts/scenarios/replay-alert-notification.sh. Grafana sends real
+  Kitex Zone A timeout alerts to a local Mailpit SMTP sink. Open
+  http://127.0.0.1:28025 to see both Firing and Resolved notifications.
+  All recipients are oncall@example.test and no host SMTP port is exposed.
+  Screenshots and message details are stored in ignored evidence/.
+- Reading an email does NOT acknowledge an On-call incident. This experiment
+  demonstrates delivery and an investigation link; do not claim it replicates
+  the original internal Feishu acknowledge action.
+
 All commands below are scoped to Oncall Lab; neither Kind nor Docker networks are physical availability zones.
 
 - Three-phase logical-zone RPC timeout: docker compose -f compose.yaml -f compose.zones.yaml run --rm --no-deps loadgen-zones (traffic profile and environment from compose.zones.yaml).
