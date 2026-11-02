@@ -5,6 +5,8 @@ networks:
   zone-b: {}
   zone-c: {}
 services:
+  tempo:
+    networks: [default, zone-a, zone-b, zone-c]
   prometheus:
     command: ["--config.file=/etc/prometheus/prometheus-zones.yml", "--storage.tsdb.retention.time=12h"]
     volumes:
@@ -17,6 +19,7 @@ services:
       METRICS_LISTEN: ":9091"
       LAB_ZONE: "zone-a"
       LAB_INSTANCE: "metadata-zone-a1"
+      OTEL_EXPORTER_ENDPOINT: "tempo:4317"
     networks: [zone-a]
     healthcheck:
       test: ["CMD", "wget", "-q", "-O", "/dev/null", "http://127.0.0.1:9091/healthz"]
@@ -31,6 +34,7 @@ services:
       METRICS_LISTEN: ":9091"
       LAB_ZONE: "zone-a"
       LAB_INSTANCE: "metadata-zone-a2"
+      OTEL_EXPORTER_ENDPOINT: "tempo:4317"
     networks: [zone-a]
     healthcheck:
       test: ["CMD", "wget", "-q", "-O", "/dev/null", "http://127.0.0.1:9091/healthz"]
@@ -48,6 +52,7 @@ services:
       METADATA_RPC_ADDR: "metadata-zone-a1:8888"
       LAB_ZONE: "zone-a"
       LAB_INSTANCE: "gateway-zone-a1"
+      OTEL_EXPORTER_ENDPOINT: "tempo:4317"
     networks: [default, zone-a]
     healthcheck:
       test: ["CMD", "wget", "-q", "-O", "/dev/null", "http://127.0.0.1:8080/healthz"]
@@ -67,6 +72,7 @@ services:
       METADATA_RPC_ADDR: "metadata-zone-a2:8888"
       LAB_ZONE: "zone-a"
       LAB_INSTANCE: "gateway-zone-a2"
+      OTEL_EXPORTER_ENDPOINT: "tempo:4317"
     networks: [default, zone-a]
     healthcheck:
       test: ["CMD", "wget", "-q", "-O", "/dev/null", "http://127.0.0.1:8080/healthz"]
@@ -81,6 +87,7 @@ services:
       METRICS_LISTEN: ":9091"
       LAB_ZONE: "zone-b"
       LAB_INSTANCE: "metadata-zone-b1"
+      OTEL_EXPORTER_ENDPOINT: "tempo:4317"
     networks: [zone-b]
     healthcheck:
       test: ["CMD", "wget", "-q", "-O", "/dev/null", "http://127.0.0.1:9091/healthz"]
@@ -95,6 +102,7 @@ services:
       METRICS_LISTEN: ":9091"
       LAB_ZONE: "zone-b"
       LAB_INSTANCE: "metadata-zone-b2"
+      OTEL_EXPORTER_ENDPOINT: "tempo:4317"
     networks: [zone-b]
     healthcheck:
       test: ["CMD", "wget", "-q", "-O", "/dev/null", "http://127.0.0.1:9091/healthz"]
@@ -112,6 +120,7 @@ services:
       METADATA_RPC_ADDR: "metadata-zone-b1:8888"
       LAB_ZONE: "zone-b"
       LAB_INSTANCE: "gateway-zone-b1"
+      OTEL_EXPORTER_ENDPOINT: "tempo:4317"
     networks: [default, zone-b]
     healthcheck:
       test: ["CMD", "wget", "-q", "-O", "/dev/null", "http://127.0.0.1:8080/healthz"]
@@ -131,6 +140,7 @@ services:
       METADATA_RPC_ADDR: "metadata-zone-b2:8888"
       LAB_ZONE: "zone-b"
       LAB_INSTANCE: "gateway-zone-b2"
+      OTEL_EXPORTER_ENDPOINT: "tempo:4317"
     networks: [default, zone-b]
     healthcheck:
       test: ["CMD", "wget", "-q", "-O", "/dev/null", "http://127.0.0.1:8080/healthz"]
@@ -145,6 +155,7 @@ services:
       METRICS_LISTEN: ":9091"
       LAB_ZONE: "zone-c"
       LAB_INSTANCE: "metadata-zone-c1"
+      OTEL_EXPORTER_ENDPOINT: "tempo:4317"
     networks: [zone-c]
     healthcheck:
       test: ["CMD", "wget", "-q", "-O", "/dev/null", "http://127.0.0.1:9091/healthz"]
@@ -159,6 +170,7 @@ services:
       METRICS_LISTEN: ":9091"
       LAB_ZONE: "zone-c"
       LAB_INSTANCE: "metadata-zone-c2"
+      OTEL_EXPORTER_ENDPOINT: "tempo:4317"
     networks: [zone-c]
     healthcheck:
       test: ["CMD", "wget", "-q", "-O", "/dev/null", "http://127.0.0.1:9091/healthz"]
@@ -176,6 +188,7 @@ services:
       METADATA_RPC_ADDR: "metadata-zone-c1:8888"
       LAB_ZONE: "zone-c"
       LAB_INSTANCE: "gateway-zone-c1"
+      OTEL_EXPORTER_ENDPOINT: "tempo:4317"
     networks: [default, zone-c]
     healthcheck:
       test: ["CMD", "wget", "-q", "-O", "/dev/null", "http://127.0.0.1:8080/healthz"]
@@ -195,6 +208,7 @@ services:
       METADATA_RPC_ADDR: "metadata-zone-c2:8888"
       LAB_ZONE: "zone-c"
       LAB_INSTANCE: "gateway-zone-c2"
+      OTEL_EXPORTER_ENDPOINT: "tempo:4317"
     networks: [default, zone-c]
     healthcheck:
       test: ["CMD", "wget", "-q", "-O", "/dev/null", "http://127.0.0.1:8080/healthz"]

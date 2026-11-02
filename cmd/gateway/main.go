@@ -18,8 +18,13 @@ import (
 	"github.com/cloudwego/kitex/pkg/kerrors"
 	"github.com/cloudwego/kitex/pkg/rpcinfo"
 	kitexprom "github.com/kitex-contrib/monitor-prometheus"
+	"github.com/kitex-contrib/obs-opentelemetry/provider"
+	oteltracing "github.com/kitex-contrib/obs-opentelemetry/tracing"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
+	"go.opentelemetry.io/otel"
+	"go.opentelemetry.io/otel/attribute"
+	"go.opentelemetry.io/otel/codes"
 )
 
 type gateway struct {
@@ -49,8 +54,12 @@ func (g *gateway) handleMetadata(w http.ResponseWriter, r *http.Request) {
 		v := int32(n)
 		delay = &v
 	}
+	ctx, span := otel.Tracer("oncall-lab/gateway").Start(r.Context(), "HTTP GET /metadata")
+	defer span.End()
+	span.SetAttributes(attribute.String("lab.zone", getEnv("LAB_ZONE", "standalone")), attribute.String("lab.instance", getEnv("LAB_INSTANCE", "gateway")))
+	traceID := span.SpanContext().TraceID().String()
 	begin := time.Now()
-	resp, err := g.rpc.GetMetadata(r.Context(), &metadata.GetMetadataRequest{ArticleId: id, DelayMs: delay})
+	resp, err := g.rpc.GetMetadata(ctx, &metadata.GetMetadataRequest{ArticleId: id, DelayMs: delay})
 	dur := time.Since(begin)
 	result := "success"
 	status := http.StatusOK
@@ -61,9 +70,11 @@ func (g *gateway) handleMetadata(w http.ResponseWriter, r *http.Request) {
 			result = "timeout"
 			status = http.StatusGatewayTimeout
 		}
-		g.log.Error("synthetic Kitex RPC failed", "result", result, "duration_ms", dur.Milliseconds(), "error", err.Error())
+		span.RecordError(err)
+		span.SetStatus(codes.Error, result)
+		g.log.Error("synthetic Kitex RPC failed", "result", result, "duration_ms", dur.Milliseconds(), "trace_id", traceID, "zone", getEnv("LAB_ZONE", "standalone"), "instance", getEnv("LAB_INSTANCE", "gateway"), "error", err.Error())
 	} else {
-		g.log.Info("synthetic Kitex RPC completed", "result", result, "duration_ms", dur.Milliseconds())
+		g.log.Info("synthetic Kitex RPC completed", "result", result, "duration_ms", dur.Milliseconds(), "trace_id", traceID, "zone", getEnv("LAB_ZONE", "standalone"), "instance", getEnv("LAB_INSTANCE", "gateway"))
 	}
 	g.requests.WithLabelValues(result).Inc()
 	g.duration.Observe(dur.Seconds())
@@ -80,12 +91,33 @@ func (g *gateway) handleMetadata(w http.ResponseWriter, r *http.Request) {
 
 func main() {
 	log := slog.New(slog.NewJSONHandler(os.Stdout, nil))
+	telemetry := provider.NewOpenTelemetryProvider(
+		provider.WithServiceName("GatewayService"),
+		provider.WithDeploymentEnvironment("lab"),
+		provider.WithResourceAttribute(attribute.String("service.instance.id", getEnv("LAB_INSTANCE", "gateway"))),
+		provider.WithResourceAttribute(attribute.String("lab.zone", getEnv("LAB_ZONE", "standalone"))),
+		provider.WithExportEndpoint(getEnv("OTEL_EXPORTER_ENDPOINT", "tempo:4317")),
+		provider.WithInsecure(),
+		provider.WithEnableMetrics(false), // Kitex Prometheus metrics already cover RED.
+	)
+	if telemetry == nil {
+		log.Error("OpenTelemetry trace provider is disabled")
+		os.Exit(1)
+	}
+	defer func() {
+		shutdownCtx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+		defer cancel()
+		if err := telemetry.Shutdown(shutdownCtx); err != nil {
+			log.Error("OpenTelemetry shutdown failed", "error", err)
+		}
+	}()
 	addr := getEnv("HTTP_LISTEN", ":8080")
 	rpcAddress := getEnv("METADATA_RPC_ADDR", "metadata:8888")
 	registry := prometheus.NewRegistry()
 	rpc, err := metadataservice.NewClient("MetadataService",
 		client.WithHostPorts(rpcAddress),
 		client.WithClientBasicInfo(&rpcinfo.EndpointBasicInfo{ServiceName: "GatewayService"}),
+		client.WithSuite(oteltracing.NewClientSuite()),
 		client.WithRPCTimeout(1200*time.Millisecond),
 		client.WithConnectTimeout(200*time.Millisecond),
 		client.WithTracer(kitexprom.NewClientTracer("", "", kitexprom.WithRegistry(registry), kitexprom.WithDisableServer(true))))

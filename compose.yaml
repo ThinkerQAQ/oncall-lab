@@ -9,6 +9,7 @@ services:
     environment:
       RPC_LISTEN: ":8888"
       METRICS_LISTEN: ":9091"
+      OTEL_EXPORTER_ENDPOINT: "tempo:4317"
     healthcheck:
       test: ["CMD", "wget", "-q", "-O", "/dev/null", "http://127.0.0.1:9091/healthz"]
       interval: 5s
@@ -29,6 +30,7 @@ services:
     environment:
       HTTP_LISTEN: ":8080"
       METADATA_RPC_ADDR: "metadata:8888"
+      OTEL_EXPORTER_ENDPOINT: "tempo:4317"
     ports:
       - "127.0.0.1:28080:8080"
     healthcheck:
