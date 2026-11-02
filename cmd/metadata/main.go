@@ -38,6 +38,13 @@ func (h *handler) GetMetadata(ctx context.Context, req *metadata.GetMetadataRequ
 		h.requests.WithLabelValues("invalid_request").Inc()
 		return nil, errors.New("article_id is required")
 	}
+	// A deliberately synthetic application handler failure is distinct from a
+	// framework deadline or network failure. No private error codes are used.
+	if req.GetArticleId() == "synthetic-application-error" {
+		h.requests.WithLabelValues("application_error").Inc()
+		h.logResult(ctx, "application_error", 0, time.Since(begin))
+		return nil, errors.New("synthetic injected application handler error")
+	}
 	// Only the synthetic lab workload may request an artificial delay.
 	delayMs := req.GetDelayMs()
 	if delayMs < 0 || delayMs > 3000 {

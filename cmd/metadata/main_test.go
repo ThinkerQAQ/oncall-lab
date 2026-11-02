@@ -45,3 +45,11 @@ func TestGetMetadataHonorsCancellation(t *testing.T) {
 		t.Fatalf("expected cancellation, got %v", err)
 	}
 }
+
+func TestGetMetadataSyntheticApplicationError(t *testing.T) {
+	h := testHandler()
+	_, err := h.GetMetadata(context.Background(), &metadata.GetMetadataRequest{ArticleId: "synthetic-application-error"})
+	if err == nil || err.Error() != "synthetic injected application handler error" {
+		t.Fatalf("expected synthetic application error, got %v", err)
+	}
+}
