@@ -111,6 +111,13 @@ func main() {
 	metrics := http.NewServeMux()
 	metrics.Handle("/metrics", promhttp.HandlerFor(registry, promhttp.HandlerOpts{}))
 	metrics.HandleFunc("/healthz", func(w http.ResponseWriter, r *http.Request) { w.WriteHeader(http.StatusOK) })
+	metrics.HandleFunc("/readyz", func(w http.ResponseWriter, r *http.Request) {
+		if !readyForTraffic(getEnv("LAB_UNREADY_FILE", "")) {
+			http.Error(w, "synthetic instance deliberately removed from traffic", http.StatusServiceUnavailable)
+			return
+		}
+		w.WriteHeader(http.StatusOK)
+	})
 	go func() {
 		if err := http.ListenAndServe(metricsAddr, metrics); err != nil {
 			log.Error("metrics server terminated", "error", err)

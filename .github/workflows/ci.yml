@@ -17,6 +17,10 @@ jobs:
       - run: go vet ./...
       - name: Verify synthetic evidence checker
         run: python3 -m unittest discover -s scripts -p "test_*.py"
+      - name: Validate Kubernetes experiment helpers
+        run: |
+          python3 -m unittest discover -s k8s -p "test_*.py"
+          for script in k8s/*.sh scripts/scenarios/*.sh; do bash -n "$script"; done
       - name: Validate Docker Compose
         run: GRAFANA_ADMIN_PASSWORD=ci-only-placeholder docker compose config --quiet
       - name: Build experiment containers
