@@ -13,6 +13,7 @@ import (
 
 	"github.com/ThinkerQAQ/oncall-lab/kitex_gen/metadata"
 	"github.com/ThinkerQAQ/oncall-lab/kitex_gen/metadata/metadataservice"
+	"github.com/cloudwego/kitex/pkg/kerrors"
 	"github.com/cloudwego/kitex/pkg/rpcinfo"
 	"github.com/cloudwego/kitex/server"
 	kitexprom "github.com/kitex-contrib/monitor-prometheus"
@@ -43,7 +44,7 @@ func (h *handler) GetMetadata(ctx context.Context, req *metadata.GetMetadataRequ
 	if req.GetArticleId() == "synthetic-application-error" {
 		h.requests.WithLabelValues("application_error").Inc()
 		h.logResult(ctx, "application_error", 0, time.Since(begin))
-		return nil, errors.New("synthetic injected application handler error")
+		return nil, kerrors.NewBizStatusError(2101, "synthetic application handler error")
 	}
 	// Only the synthetic lab workload may request an artificial delay.
 	delayMs := req.GetDelayMs()

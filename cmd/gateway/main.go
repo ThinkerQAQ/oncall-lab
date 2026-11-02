@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"fmt"
 	"github.com/ThinkerQAQ/oncall-lab/internal/lablog"
 	"log/slog"
 	"net/http"
@@ -63,21 +64,26 @@ func (g *gateway) handleMetadata(w http.ResponseWriter, r *http.Request) {
 	resp, err := g.rpc.GetMetadata(ctx, &metadata.GetMetadataRequest{ArticleId: id, DelayMs: delay})
 	dur := time.Since(begin)
 	result := "success"
+	errorCode := "none"
 	status := http.StatusOK
 	if err != nil {
 		result = "rpc_error"
+		errorCode = "rpc_other_error"
 		status = http.StatusBadGateway
 		if kerrors.IsTimeoutError(err) || errors.Is(err, context.DeadlineExceeded) {
 			result = "timeout"
+			errorCode = "rpc_timeout"
 			status = http.StatusGatewayTimeout
+		} else if bizErr, ok := kerrors.FromBizStatusError(err); ok {
+			errorCode = fmt.Sprintf("biz_%d", bizErr.BizStatusCode())
 		}
 		span.RecordError(err)
 		span.SetStatus(codes.Error, result)
-		g.log.Error("synthetic Kitex RPC failed", "result", result, "duration_ms", dur.Milliseconds(), "trace_id", traceID, "zone", getEnv("LAB_ZONE", "standalone"), "instance", getEnv("LAB_INSTANCE", "gateway"), "error", err.Error())
+		g.log.Error("synthetic Kitex RPC failed", "result", result, "error_code", errorCode, "duration_ms", dur.Milliseconds(), "trace_id", traceID, "zone", getEnv("LAB_ZONE", "standalone"), "instance", getEnv("LAB_INSTANCE", "gateway"), "error", err.Error())
 	} else {
-		g.log.Info("synthetic Kitex RPC completed", "result", result, "duration_ms", dur.Milliseconds(), "trace_id", traceID, "zone", getEnv("LAB_ZONE", "standalone"), "instance", getEnv("LAB_INSTANCE", "gateway"))
+		g.log.Info("synthetic Kitex RPC completed", "result", result, "error_code", errorCode, "duration_ms", dur.Milliseconds(), "trace_id", traceID, "zone", getEnv("LAB_ZONE", "standalone"), "instance", getEnv("LAB_INSTANCE", "gateway"))
 	}
-	g.requests.WithLabelValues(result).Inc()
+	g.requests.WithLabelValues(result, errorCode).Inc()
 	g.duration.Observe(dur.Seconds())
 	w.Header().Set("X-Lab-Zone", getEnv("LAB_ZONE", "standalone"))
 	w.Header().Set("X-Lab-Instance", getEnv("LAB_INSTANCE", "gateway"))
@@ -127,7 +133,7 @@ func main() {
 		log.Error("create Kitex client", "error", err)
 		os.Exit(1)
 	}
-	reqs := prometheus.NewCounterVec(prometheus.CounterOpts{Name: "rpc_client_requests_total", Help: "Synthetic Kitex RPC client outcomes."}, []string{"result"})
+	reqs := prometheus.NewCounterVec(prometheus.CounterOpts{Name: "rpc_client_requests_total", Help: "Synthetic Kitex RPC client outcomes."}, []string{"result", "error_code"})
 	dur := prometheus.NewHistogram(prometheus.HistogramOpts{Name: "rpc_client_duration_seconds", Help: "Kitex GetMetadata RPC duration observed at the gateway."})
 	registry.MustRegister(reqs, dur)
 	g := &gateway{rpc: rpc, requests: reqs, duration: dur, log: log}

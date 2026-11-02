@@ -13,11 +13,13 @@ scrape_configs:
             zone: zone
             instance: instance
             result: result
+            error_code: error_code
             trace_id: trace_id
       - labels:
           zone:
           instance:
           result:
+          error_code:
     static_configs:
       - targets: [localhost]
         labels:

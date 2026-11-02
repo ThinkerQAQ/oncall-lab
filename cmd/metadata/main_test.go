@@ -6,6 +6,7 @@ import (
 	"testing"
 
 	"github.com/ThinkerQAQ/oncall-lab/kitex_gen/metadata"
+	"github.com/cloudwego/kitex/pkg/kerrors"
 	"github.com/prometheus/client_golang/prometheus"
 )
 
@@ -49,7 +50,8 @@ func TestGetMetadataHonorsCancellation(t *testing.T) {
 func TestGetMetadataSyntheticApplicationError(t *testing.T) {
 	h := testHandler()
 	_, err := h.GetMetadata(context.Background(), &metadata.GetMetadataRequest{ArticleId: "synthetic-application-error"})
-	if err == nil || err.Error() != "synthetic injected application handler error" {
-		t.Fatalf("expected synthetic application error, got %v", err)
+	bizErr, ok := kerrors.FromBizStatusError(err)
+	if !ok || bizErr.BizStatusCode() != 2101 {
+		t.Fatalf("expected Kitex synthetic biz error code 2101, got %v", err)
 	}
 }

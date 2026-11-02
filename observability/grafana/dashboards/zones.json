@@ -2,7 +2,7 @@
   "uid": "oncall-zones",
   "title": "Oncall Lab · Logical Zones (Synthetic)",
   "schemaVersion": 40,
-  "version": 3,
+  "version": 4,
   "time": {
     "from": "now-15m",
     "to": "now"
@@ -306,6 +306,28 @@
         "wrapLogMessage": false,
         "sortOrder": "Descending"
       }
+    },
+    {
+      "id": 12,
+      "type": "timeseries",
+      "title": "Real Kitex RPC failure QPS by synthetic error code",
+      "gridPos": {
+        "h": 9,
+        "w": 24,
+        "x": 0,
+        "y": 60
+      },
+      "datasource": {
+        "type": "prometheus",
+        "uid": "prom"
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "sum by (zone, error_code) (rate(rpc_client_requests_total{zone=~\"zone-.*\",result!=\"success\"}[30s]))",
+          "legendFormat": "{{zone}} / {{error_code}}"
+        }
+      ]
     }
   ]
 }
