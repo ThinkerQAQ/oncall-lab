@@ -52,5 +52,6 @@ fi
 "$KUBECTL" -n oncall-lab rollout status deploy/gateway --timeout=240s
 KUBECTL_BIN="$KUBECTL" k8s/rebalance.sh
 KUBECTL_BIN="$KUBECTL" k8s/check.sh
+k8s/port-forward.sh
 "$KUBECTL" -n oncall-lab get pods -o wide
 printf '\nKind context is scoped to: %s\n' "$KUBECONFIG"

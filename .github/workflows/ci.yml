@@ -20,6 +20,7 @@ jobs:
       - name: Validate Kubernetes experiment helpers
         run: |
           python3 -m unittest discover -s k8s -p "test_*.py"
+          python3 -m compileall -q k8s scripts
           for script in k8s/*.sh scripts/scenarios/*.sh; do bash -n "$script"; done
       - name: Validate Docker Compose
         run: GRAFANA_ADMIN_PASSWORD=ci-only-placeholder docker compose config --quiet

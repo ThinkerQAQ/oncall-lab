@@ -71,9 +71,10 @@ All commands below are scoped to Oncall Lab; neither Kind nor Docker networks ar
 - Three-phase logical-zone RPC timeout: docker compose -f compose.yaml -f compose.zones.yaml run --rm --no-deps loadgen-zones (traffic profile and environment from compose.zones.yaml).
 - Real Kitex transport outage with cleanup: scripts/scenarios/connection-unavailable.sh.
 - Actual container-start/image-ID change timeline: scripts/scenarios/record-change.sh; this is a *same-image recreation*, not a code release.
-- Isolated Kubernetes lifecycle: k8s/up.sh, then k8s/drain.sh and k8s/lifecycle.sh.
+- Isolated Kubernetes lifecycle: k8s/up.sh (also restores a safe localhost:28084 port-forward), then k8s/drain.sh and k8s/lifecycle.sh.
+- Real rolling restart under concurrent Kitex RPC traffic: python3 k8s/rollout-traffic.py; preserve actual per-request status/latency evidence and do not assume it will be error-free.
 - Kind-only HPA: k8s/metrics-server.sh then k8s/hpa.sh; CPU load and HPA must be cleaned up even if a test fails.
-- Real connection reuse / uneven service-endpoint traffic: start scoped localhost port-forward on 28084 to svc/gateway and run python3 k8s/load-balancing.py; measure real per-Pod counters before/after.
+- Real connection reuse / uneven service-endpoint traffic: k8s/port-forward.sh exposes only localhost:28084 and automatically restores the scoped forward after a Gateway rollout; then python3 k8s/load-balancing.py measures real per-Pod counters before/after.
 - Snapshots and real Grafana screenshots belong in ignored evidence/; never fabricate missing data.
 
 Metrics values are comparable only within the same measurement window and scrape-target lifetime. A single-host Kind simulation cannot verify real multi-region isolation, physical network conditions, proprietary mesh error codes, or production Consul convergence.
