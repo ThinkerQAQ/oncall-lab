@@ -52,7 +52,9 @@ jobs:
             sleep 2
           done
           curl -fsS -u "demo:$GRAFANA_ADMIN_PASSWORD" http://127.0.0.1:23000/api/v1/provisioning/contact-points |
-            python3 -c 'import json,sys;items=json.load(sys.stdin);assert any(x.get("name")=="oncall-lab-local-inbox" and x.get("type")=="email" for x in items)'
+            python3 -c 'import json,sys;items=json.load(sys.stdin);assert any(x.get("name")=="oncall-lab-local-inbox" and x.get("type")=="email" and ".CommonLabels.priority" in x.get("settings",{}).get("subject","") for x in items)'
+          curl -fsS -u "demo:$GRAFANA_ADMIN_PASSWORD" http://127.0.0.1:23000/api/v1/provisioning/alert-rules |
+            python3 -c 'import json,sys;items=json.load(sys.stdin);assert {(x.get("labels",{}).get("priority"),x.get("labels",{}).get("severity")) for x in items}=={("P1","critical"),("P2","warning")}'
           curl -fsS -u "demo:$GRAFANA_ADMIN_PASSWORD" http://127.0.0.1:23000/api/v1/provisioning/policies |
             python3 -c 'import json,sys;cfg=json.load(sys.stdin);assert cfg["receiver"]=="oncall-lab-local-inbox"'
           curl -fsS 'http://127.0.0.1:28081/metadata?id=ci'

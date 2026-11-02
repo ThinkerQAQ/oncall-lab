@@ -10,13 +10,14 @@ contactPoints:
         settings:
           addresses: "oncall@example.test"
           singleEmail: true
+          subject: '[{{ .Status | toUpper }}][{{ .CommonLabels.priority }}][{{ .CommonLabels.severity | toUpper }}] {{ .CommonLabels.alertname }}'
 
 # Dedicated synthetic lab: all its alerts are routed to the local inbox.
 # This does not alter the user's real Grafana or any production Alertmanager.
 policies:
   - orgId: 1
     receiver: oncall-lab-local-inbox
-    group_by: ["grafana_folder", "alertname"]
+    group_by: ["grafana_folder", "alertname", "priority"]
     group_wait: 5s
     group_interval: 1m
     repeat_interval: 4h

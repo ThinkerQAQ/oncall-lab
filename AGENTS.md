@@ -66,10 +66,19 @@ This scenario is not a substitute for Kubernetes rolling-updates or discovery-co
 
 ## Reproducible experiment scenarios
 
+- Keep three separate on-call classification dimensions from the original
+  methodology: priority (P0/P1/P2), severity (critical/warning), and
+  notification channel. The lab provisions P2/Warning for Zone A timeout QPS
+  and P1/Critical when Zone A's timeout ratio >25% for 20 seconds.
+  This is a synthetic classification demonstration, NOT a claim about real
+  P0/P1 production business impact. P0 remains untriggered without
+  broad service-impact evidence. Both notifications use only a local mailbox,
+  not real phone/Feishu escalation.
 - Reproduce actual alert delivery, not merely a Grafana Firing state:
   run scripts/scenarios/replay-alert-notification.sh. Grafana sends real
   Kitex Zone A timeout alerts to a local Mailpit SMTP sink. Open
-  http://127.0.0.1:28025 to see both Firing and Resolved notifications.
+  http://127.0.0.1:28025 to see P1/Critical and P2/Warning with both
+  Firing and Resolved notifications.
   All recipients are oncall@example.test and no host SMTP port is exposed.
   Screenshots and message details are stored in ignored evidence/.
 - Reading an email does NOT acknowledge an On-call incident. This experiment
