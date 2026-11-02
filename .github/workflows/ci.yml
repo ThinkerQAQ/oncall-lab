@@ -1,6 +1,7 @@
 name: Validate
 on:
   push:
+    branches: [main]
   pull_request:
 
 jobs:
@@ -14,6 +15,8 @@ jobs:
           cache: true
       - run: go test ./...
       - run: go vet ./...
+      - name: Verify synthetic evidence checker
+        run: python3 -m unittest discover -s scripts -p "test_*.py"
       - name: Validate Docker Compose
         run: GRAFANA_ADMIN_PASSWORD=ci-only-placeholder docker compose config --quiet
       - name: Build experiment containers
