@@ -23,6 +23,7 @@ import (
 	"github.com/kitex-contrib/obs-opentelemetry/provider"
 	oteltracing "github.com/kitex-contrib/obs-opentelemetry/tracing"
 	"github.com/prometheus/client_golang/prometheus"
+	"github.com/prometheus/client_golang/prometheus/collectors"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
 	"go.opentelemetry.io/otel"
 	"go.opentelemetry.io/otel/attribute"
@@ -136,6 +137,7 @@ func main() {
 	reqs := prometheus.NewCounterVec(prometheus.CounterOpts{Name: "rpc_client_requests_total", Help: "Synthetic Kitex RPC client outcomes."}, []string{"result", "error_code"})
 	dur := prometheus.NewHistogram(prometheus.HistogramOpts{Name: "rpc_client_duration_seconds", Help: "Kitex GetMetadata RPC duration observed at the gateway."})
 	registry.MustRegister(reqs, dur)
+	registry.MustRegister(collectors.NewGoCollector(), collectors.NewProcessCollector(collectors.ProcessCollectorOpts{}))
 	g := &gateway{rpc: rpc, requests: reqs, duration: dur, log: log}
 	mux := http.NewServeMux()
 	mux.HandleFunc("/metadata", g.handleMetadata)

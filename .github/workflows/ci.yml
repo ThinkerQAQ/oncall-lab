@@ -50,6 +50,8 @@ jobs:
           test "$(curl -sS -o /dev/null -w '%{http_code}' 'http://127.0.0.1:28081/metadata?id=synthetic-application-error')" = 502
           curl -fsS 'http://127.0.0.1:28081/metrics' | grep -q 'rpc_client_requests_total{error_code="biz_2101",result="rpc_error"}'
           curl -fsS 'http://127.0.0.1:28081/metrics' | grep -q 'rpc_client_requests_total{error_code="rpc_timeout",result="timeout"}'
+          curl -fsS 'http://127.0.0.1:28081/metrics' | grep -q '^process_resident_memory_bytes '
+          curl -fsS 'http://127.0.0.1:28081/metrics' | grep -q '^process_cpu_seconds_total '
 
           # Assert Tempo received the real HTTP -> Kitex client -> Kitex server chain.
           trace_id=$(docker logs oncall-lab-gateway-zone-a1-1 2>&1 | grep 'synthetic Kitex RPC completed' | grep -oE '"trace_id":"[a-f0-9]{32}"' | tail -1 | cut -d '"' -f4)

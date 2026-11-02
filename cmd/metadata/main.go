@@ -20,6 +20,7 @@ import (
 	"github.com/kitex-contrib/obs-opentelemetry/provider"
 	oteltracing "github.com/kitex-contrib/obs-opentelemetry/tracing"
 	"github.com/prometheus/client_golang/prometheus"
+	"github.com/prometheus/client_golang/prometheus/collectors"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
 	"go.opentelemetry.io/otel/attribute"
 	"go.opentelemetry.io/otel/trace"
@@ -109,6 +110,7 @@ func main() {
 	duration := prometheus.NewHistogramVec(prometheus.HistogramOpts{Name: "rpc_server_duration_seconds", Help: "Synthetic Kitex RPC server handler duration."}, []string{})
 	registry := prometheus.NewRegistry()
 	registry.MustRegister(requests, duration)
+	registry.MustRegister(collectors.NewGoCollector(), collectors.NewProcessCollector(collectors.ProcessCollectorOpts{}))
 	metrics := http.NewServeMux()
 	metrics.Handle("/metrics", promhttp.HandlerFor(registry, promhttp.HandlerOpts{}))
 	metrics.HandleFunc("/healthz", func(w http.ResponseWriter, r *http.Request) { w.WriteHeader(http.StatusOK) })

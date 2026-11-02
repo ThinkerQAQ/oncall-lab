@@ -2,7 +2,7 @@
   "uid": "oncall-zones",
   "title": "Oncall Lab · Logical Zones (Synthetic)",
   "schemaVersion": 40,
-  "version": 4,
+  "version": 5,
   "time": {
     "from": "now-15m",
     "to": "now"
@@ -326,6 +326,72 @@
           "refId": "A",
           "expr": "sum by (zone, error_code) (rate(rpc_client_requests_total{zone=~\"zone-.*\",result!=\"success\"}[30s]))",
           "legendFormat": "{{zone}} / {{error_code}}"
+        }
+      ]
+    },
+    {
+      "id": 13,
+      "type": "timeseries",
+      "title": "RPC success ratio by logical zone (0..1)",
+      "gridPos": {
+        "h": 9,
+        "w": 24,
+        "x": 0,
+        "y": 69
+      },
+      "datasource": {
+        "type": "prometheus",
+        "uid": "prom"
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "1 - (sum by(zone)(rate(rpc_client_requests_total{zone=~\"zone-.*\",result!=\"success\"}[1m])) or 0 * sum by(zone)(rate(rpc_client_requests_total{zone=~\"zone-.*\"}[1m]))) / clamp_min(sum by(zone)(rate(rpc_client_requests_total{zone=~\"zone-.*\"}[1m])),0.000001)",
+          "legendFormat": "{{job}} / {{zone}} / {{instance}}"
+        }
+      ]
+    },
+    {
+      "id": 14,
+      "type": "timeseries",
+      "title": "Real process CPU cores used (by running instance)",
+      "gridPos": {
+        "h": 9,
+        "w": 24,
+        "x": 0,
+        "y": 78
+      },
+      "datasource": {
+        "type": "prometheus",
+        "uid": "prom"
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "rate(process_cpu_seconds_total{zone=~\"zone-.*\"}[1m])",
+          "legendFormat": "{{job}} / {{zone}} / {{instance}}"
+        }
+      ]
+    },
+    {
+      "id": 15,
+      "type": "timeseries",
+      "title": "Real process resident memory bytes (by running instance)",
+      "gridPos": {
+        "h": 9,
+        "w": 24,
+        "x": 0,
+        "y": 87
+      },
+      "datasource": {
+        "type": "prometheus",
+        "uid": "prom"
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "process_resident_memory_bytes{zone=~\"zone-.*\"}",
+          "legendFormat": "{{job}} / {{zone}} / {{instance}}"
         }
       ]
     }
