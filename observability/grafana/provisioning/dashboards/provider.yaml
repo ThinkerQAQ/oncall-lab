@@ -1,0 +1,10 @@
+apiVersion: 1
+providers:
+  - name: Oncall lab
+    orgId: 1
+    folder: Synthetic Experiments
+    type: file
+    disableDeletion: true
+    updateIntervalSeconds: 10
+    options:
+      path: /etc/grafana/dashboards

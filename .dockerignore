@@ -1,0 +1,16 @@
+.git
+.github
+.env
+.env.*
+Data
+data
+output
+evidence
+*.png
+*.log
+*.pcap
+*.prof
+*.pprof
+*.tmp
+README*
+AGENTS.md

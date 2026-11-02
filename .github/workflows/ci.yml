@@ -1,0 +1,22 @@
+name: Validate
+on:
+  push:
+  pull_request:
+
+jobs:
+  go-and-compose:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: go.mod
+          cache: true
+      - run: go test ./...
+      - run: go vet ./...
+      - name: Validate Docker Compose
+        run: GRAFANA_ADMIN_PASSWORD=ci-only-placeholder docker compose config --quiet
+      - name: Build experiment containers
+        run: docker compose build metadata gateway loadgen
+        env:
+          GRAFANA_ADMIN_PASSWORD: ci-only-placeholder

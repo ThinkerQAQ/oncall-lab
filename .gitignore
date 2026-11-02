@@ -1,0 +1,32 @@
+# Runtime, local settings and evidence
+.env
+.env.*
+!.env.example
+Data/
+data/
+output/
+evidence/
+*.log
+*.trace
+*.pcap
+*.pprof
+*.prof
+*.out
+coverage/
+.coverage/
+.cache/
+.build/
+dist/
+bin/
+
+# Tooling and editor state
+.serena/
+.idea/
+.vscode/
+.DS_Store
+Thumbs.db
+*.swp
+*.tmp
+
+# Go
+/vendor/
