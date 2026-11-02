@@ -64,6 +64,20 @@ The default run has longer phases (25s / 50s / 25s). Query the Prometheus `kitex
 
 This scenario is not a substitute for Kubernetes rolling-updates or discovery-convergence experiments. Those require separate Kind/Kubernetes topology and explicit test evidence.
 
+## Reproducible experiment scenarios
+
+All commands below are scoped to Oncall Lab; neither Kind nor Docker networks are physical availability zones.
+
+- Three-phase logical-zone RPC timeout: docker compose -f compose.yaml -f compose.zones.yaml run --rm --no-deps loadgen-zones (traffic profile and environment from compose.zones.yaml).
+- Real Kitex transport outage with cleanup: scripts/scenarios/connection-unavailable.sh.
+- Actual container-start/image-ID change timeline: scripts/scenarios/record-change.sh; this is a *same-image recreation*, not a code release.
+- Isolated Kubernetes lifecycle: k8s/up.sh, then k8s/drain.sh and k8s/lifecycle.sh.
+- Kind-only HPA: k8s/metrics-server.sh then k8s/hpa.sh; CPU load and HPA must be cleaned up even if a test fails.
+- Real connection reuse / uneven service-endpoint traffic: start scoped localhost port-forward on 28084 to svc/gateway and run python3 k8s/load-balancing.py; measure real per-Pod counters before/after.
+- Snapshots and real Grafana screenshots belong in ignored evidence/; never fabricate missing data.
+
+Metrics values are comparable only within the same measurement window and scrape-target lifetime. A single-host Kind simulation cannot verify real multi-region isolation, physical network conditions, proprietary mesh error codes, or production Consul convergence.
+
 ## Git workflow
 
 - Initial bootstrap may create the first commit on an empty repository; subsequent changes go through feature branches and pull requests.

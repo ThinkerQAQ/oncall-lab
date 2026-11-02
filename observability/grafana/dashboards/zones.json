@@ -2,7 +2,7 @@
   "uid": "oncall-zones",
   "title": "Oncall Lab · Logical Zones (Synthetic)",
   "schemaVersion": 40,
-  "version": 2,
+  "version": 3,
   "time": {
     "from": "now-15m",
     "to": "now"
@@ -221,6 +221,90 @@
       "fieldConfig": {
         "defaults": {},
         "overrides": []
+      }
+    },
+    {
+      "id": 9,
+      "type": "logs",
+      "title": "Kitex Client Timeout Logs (Loki)",
+      "gridPos": {
+        "h": 8,
+        "w": 24,
+        "x": 0,
+        "y": 36
+      },
+      "datasource": {
+        "type": "loki",
+        "uid": "loki"
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "{job=\"oncall-lab\",result=\"timeout\"}",
+          "queryType": "range"
+        }
+      ],
+      "options": {
+        "showTime": true,
+        "showLabels": false,
+        "wrapLogMessage": false,
+        "sortOrder": "Descending"
+      }
+    },
+    {
+      "id": 10,
+      "type": "logs",
+      "title": "Kitex Metadata Application Errors",
+      "gridPos": {
+        "h": 8,
+        "w": 24,
+        "x": 0,
+        "y": 44
+      },
+      "datasource": {
+        "type": "loki",
+        "uid": "loki"
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "{job=\"oncall-lab\",result=\"application_error\"}",
+          "queryType": "range"
+        }
+      ],
+      "options": {
+        "showTime": true,
+        "showLabels": false,
+        "wrapLogMessage": false,
+        "sortOrder": "Descending"
+      }
+    },
+    {
+      "id": 11,
+      "type": "logs",
+      "title": "Actual Grafana Alert State Transitions (Loki)",
+      "gridPos": {
+        "h": 8,
+        "w": 24,
+        "x": 0,
+        "y": 52
+      },
+      "datasource": {
+        "type": "loki",
+        "uid": "loki"
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "{from=\"state-history\"}",
+          "queryType": "range"
+        }
+      ],
+      "options": {
+        "showTime": true,
+        "showLabels": false,
+        "wrapLogMessage": false,
+        "sortOrder": "Descending"
       }
     }
   ]
