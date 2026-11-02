@@ -14,7 +14,10 @@ services:
     networks: [default, zone-a, zone-b, zone-c]
   metadata-zone-a1:
     image: oncall-lab-metadata:local
+    volumes:
+      - oncall-logs:/var/log/oncall
     environment:
+      LAB_LOG_DIR: "/var/log/oncall"
       RPC_LISTEN: ":8888"
       METRICS_LISTEN: ":9091"
       LAB_ZONE: "zone-a"
@@ -29,7 +32,10 @@ services:
       start_period: 10s
   metadata-zone-a2:
     image: oncall-lab-metadata:local
+    volumes:
+      - oncall-logs:/var/log/oncall
     environment:
+      LAB_LOG_DIR: "/var/log/oncall"
       RPC_LISTEN: ":8888"
       METRICS_LISTEN: ":9091"
       LAB_ZONE: "zone-a"
@@ -47,7 +53,10 @@ services:
     depends_on:
       metadata-zone-a1:
         condition: service_healthy
+    volumes:
+      - oncall-logs:/var/log/oncall
     environment:
+      LAB_LOG_DIR: "/var/log/oncall"
       HTTP_LISTEN: ":8080"
       METADATA_RPC_ADDR: "metadata-zone-a1:8888"
       LAB_ZONE: "zone-a"
@@ -67,7 +76,10 @@ services:
     depends_on:
       metadata-zone-a2:
         condition: service_healthy
+    volumes:
+      - oncall-logs:/var/log/oncall
     environment:
+      LAB_LOG_DIR: "/var/log/oncall"
       HTTP_LISTEN: ":8080"
       METADATA_RPC_ADDR: "metadata-zone-a2:8888"
       LAB_ZONE: "zone-a"
@@ -82,7 +94,10 @@ services:
       start_period: 10s
   metadata-zone-b1:
     image: oncall-lab-metadata:local
+    volumes:
+      - oncall-logs:/var/log/oncall
     environment:
+      LAB_LOG_DIR: "/var/log/oncall"
       RPC_LISTEN: ":8888"
       METRICS_LISTEN: ":9091"
       LAB_ZONE: "zone-b"
@@ -97,7 +112,10 @@ services:
       start_period: 10s
   metadata-zone-b2:
     image: oncall-lab-metadata:local
+    volumes:
+      - oncall-logs:/var/log/oncall
     environment:
+      LAB_LOG_DIR: "/var/log/oncall"
       RPC_LISTEN: ":8888"
       METRICS_LISTEN: ":9091"
       LAB_ZONE: "zone-b"
@@ -115,7 +133,10 @@ services:
     depends_on:
       metadata-zone-b1:
         condition: service_healthy
+    volumes:
+      - oncall-logs:/var/log/oncall
     environment:
+      LAB_LOG_DIR: "/var/log/oncall"
       HTTP_LISTEN: ":8080"
       METADATA_RPC_ADDR: "metadata-zone-b1:8888"
       LAB_ZONE: "zone-b"
@@ -135,7 +156,10 @@ services:
     depends_on:
       metadata-zone-b2:
         condition: service_healthy
+    volumes:
+      - oncall-logs:/var/log/oncall
     environment:
+      LAB_LOG_DIR: "/var/log/oncall"
       HTTP_LISTEN: ":8080"
       METADATA_RPC_ADDR: "metadata-zone-b2:8888"
       LAB_ZONE: "zone-b"
@@ -150,7 +174,10 @@ services:
       start_period: 10s
   metadata-zone-c1:
     image: oncall-lab-metadata:local
+    volumes:
+      - oncall-logs:/var/log/oncall
     environment:
+      LAB_LOG_DIR: "/var/log/oncall"
       RPC_LISTEN: ":8888"
       METRICS_LISTEN: ":9091"
       LAB_ZONE: "zone-c"
@@ -165,7 +192,10 @@ services:
       start_period: 10s
   metadata-zone-c2:
     image: oncall-lab-metadata:local
+    volumes:
+      - oncall-logs:/var/log/oncall
     environment:
+      LAB_LOG_DIR: "/var/log/oncall"
       RPC_LISTEN: ":8888"
       METRICS_LISTEN: ":9091"
       LAB_ZONE: "zone-c"
@@ -183,7 +213,10 @@ services:
     depends_on:
       metadata-zone-c1:
         condition: service_healthy
+    volumes:
+      - oncall-logs:/var/log/oncall
     environment:
+      LAB_LOG_DIR: "/var/log/oncall"
       HTTP_LISTEN: ":8080"
       METADATA_RPC_ADDR: "metadata-zone-c1:8888"
       LAB_ZONE: "zone-c"
@@ -203,7 +236,10 @@ services:
     depends_on:
       metadata-zone-c2:
         condition: service_healthy
+    volumes:
+      - oncall-logs:/var/log/oncall
     environment:
+      LAB_LOG_DIR: "/var/log/oncall"
       HTTP_LISTEN: ":8080"
       METADATA_RPC_ADDR: "metadata-zone-c2:8888"
       LAB_ZONE: "zone-c"

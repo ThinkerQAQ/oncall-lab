@@ -1,3 +1,5 @@
+volumes:
+  oncall-logs:
 name: oncall-lab
 services:
   metadata:
@@ -6,7 +8,10 @@ services:
       context: .
       args:
         TARGET: metadata
+    volumes:
+      - oncall-logs:/var/log/oncall
     environment:
+      LAB_LOG_DIR: "/var/log/oncall"
       RPC_LISTEN: ":8888"
       METRICS_LISTEN: ":9091"
       OTEL_EXPORTER_ENDPOINT: "tempo:4317"
@@ -27,7 +32,10 @@ services:
     depends_on:
       metadata:
         condition: service_healthy
+    volumes:
+      - oncall-logs:/var/log/oncall
     environment:
+      LAB_LOG_DIR: "/var/log/oncall"
       HTTP_LISTEN: ":8080"
       METADATA_RPC_ADDR: "metadata:8888"
       OTEL_EXPORTER_ENDPOINT: "tempo:4317"
@@ -87,6 +95,16 @@ services:
       - tempo
     ports:
       - "127.0.0.1:23000:3000"
+    restart: unless-stopped
+
+  promtail:
+    image: grafana/promtail:3.5.3
+    command: ["-config.file=/etc/promtail/promtail.yaml"]
+    volumes:
+      - ./observability/promtail/promtail.yaml:/etc/promtail/promtail.yaml:ro
+      - oncall-logs:/var/log/oncall:ro
+    depends_on:
+      - loki
     restart: unless-stopped
 
   loki:

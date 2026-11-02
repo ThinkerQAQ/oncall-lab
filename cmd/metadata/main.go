@@ -3,6 +3,7 @@ package main
 import (
 	"context"
 	"errors"
+	"github.com/ThinkerQAQ/oncall-lab/internal/lablog"
 	"log/slog"
 	"net"
 	"net/http"
@@ -66,7 +67,8 @@ func (h *handler) logResult(ctx context.Context, result string, delayMs int32, e
 }
 
 func main() {
-	log := slog.New(slog.NewJSONHandler(os.Stdout, nil))
+	log, closeLog := lablog.New("metadata")
+	defer closeLog()
 	telemetry := provider.NewOpenTelemetryProvider(
 		provider.WithServiceName("MetadataService"),
 		provider.WithDeploymentEnvironment("lab"),

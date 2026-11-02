@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"github.com/ThinkerQAQ/oncall-lab/internal/lablog"
 	"log/slog"
 	"net/http"
 	"os"
@@ -90,7 +91,8 @@ func (g *gateway) handleMetadata(w http.ResponseWriter, r *http.Request) {
 }
 
 func main() {
-	log := slog.New(slog.NewJSONHandler(os.Stdout, nil))
+	log, closeLog := lablog.New("gateway")
+	defer closeLog()
 	telemetry := provider.NewOpenTelemetryProvider(
 		provider.WithServiceName("GatewayService"),
 		provider.WithDeploymentEnvironment("lab"),
