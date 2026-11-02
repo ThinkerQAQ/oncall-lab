@@ -1,0 +1,156 @@
+apiVersion: 1
+groups:
+  - orgId: 1
+    name: synthetic-rpc-faults
+    folder: Synthetic Experiments
+    interval: 10s
+    rules:
+      - uid: oncall_zone_a_timeout
+        title: Synthetic Zone A Kitex RPC timeout rate
+        condition: C
+        data:
+          - refId: A
+            relativeTimeRange:
+              from: 60
+              to: 0
+            datasourceUid: prom
+            model:
+              datasource:
+                type: prometheus
+                uid: prom
+              expr: 'sum(rate(rpc_client_requests_total{zone="zone-a",result="timeout"}[30s])) or vector(0)'
+              instant: true
+              intervalMs: 1000
+              maxDataPoints: 43200
+              refId: A
+          - refId: B
+            datasourceUid: __expr__
+            model:
+              conditions:
+                - evaluator: {params: [], type: gt}
+                  operator: {type: and}
+                  query: {params: [B]}
+                  reducer: {params: [], type: last}
+                  type: query
+              datasource: {type: __expr__, uid: __expr__}
+              expression: A
+              intervalMs: 1000
+              maxDataPoints: 43200
+              reducer: last
+              refId: B
+              type: reduce
+          - refId: C
+            datasourceUid: __expr__
+            model:
+              conditions:
+                - evaluator: {params: [0.05], type: gt}
+                  operator: {type: and}
+                  query: {params: [C]}
+                  reducer: {params: [], type: last}
+                  type: query
+              datasource: {type: __expr__, uid: __expr__}
+              expression: B
+              intervalMs: 1000
+              maxDataPoints: 43200
+              refId: C
+              type: threshold
+        noDataState: OK
+        execErrState: Error
+        for: 0s
+        annotations:
+          summary: 'Synthetic Zone A Kitex client timeouts detected; inspect both Gateway and Metadata using the same trace_id.'
+          description: 'Lab-only alert. No production users or physical AZs are involved.'
+        labels:
+          severity: warning
+          priority: P2
+          service: GatewayService
+          zone: zone-a
+          environment: lab
+          topology: logical-zone
+        isPaused: false
+
+      - uid: oncall_zone_a_critical
+        title: Synthetic Zone A Kitex RPC high failure ratio
+        condition: C
+        data:
+        - refId: A
+          relativeTimeRange:
+            from: 60
+            to: 0
+          datasourceUid: prom
+          model:
+            datasource:
+              type: prometheus
+              uid: prom
+            expr: sum(rate(rpc_client_requests_total{zone="zone-a",result="timeout"}[30s]))
+              / clamp_min(sum(rate(rpc_client_requests_total{zone="zone-a"}[30s])), 0.000001)
+            instant: true
+            intervalMs: 1000
+            maxDataPoints: 43200
+            refId: A
+        - refId: B
+          datasourceUid: __expr__
+          model:
+            conditions:
+            - evaluator:
+                params: []
+                type: gt
+              operator:
+                type: and
+              query:
+                params:
+                - B
+              reducer:
+                params: []
+                type: last
+              type: query
+            datasource:
+              type: __expr__
+              uid: __expr__
+            expression: A
+            intervalMs: 1000
+            maxDataPoints: 43200
+            reducer: last
+            refId: B
+            type: reduce
+        - refId: C
+          datasourceUid: __expr__
+          model:
+            conditions:
+            - evaluator:
+                params:
+                - 0.25
+                type: gt
+              operator:
+                type: and
+              query:
+                params:
+                - C
+              reducer:
+                params: []
+                type: last
+              type: query
+            datasource:
+              type: __expr__
+              uid: __expr__
+            expression: B
+            intervalMs: 1000
+            maxDataPoints: 43200
+            refId: C
+            type: threshold
+        noDataState: OK
+        execErrState: Error
+        for: 20s
+        annotations:
+          summary: More than 25% of Zone A Kitex client requests timed out; synthetic P1 for
+            on-call prioritization.
+          description: Lab-only priority exercise. P1 is illustrative; P0 requires separate
+            business impact evidence.
+        labels:
+          severity: critical
+          environment: lab
+          topology: logical-zone
+          priority: P1
+          service: GatewayService
+          zone: zone-a
+        isPaused: false

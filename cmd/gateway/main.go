@@ -4,6 +4,8 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"fmt"
+	"github.com/ThinkerQAQ/oncall-lab/internal/lablog"
 	"log/slog"
 	"net/http"
 	"os"
@@ -16,8 +18,16 @@ import (
 	"github.com/ThinkerQAQ/oncall-lab/kitex_gen/metadata/metadataservice"
 	"github.com/cloudwego/kitex/client"
 	"github.com/cloudwego/kitex/pkg/kerrors"
+	"github.com/cloudwego/kitex/pkg/rpcinfo"
+	kitexprom "github.com/kitex-contrib/monitor-prometheus"
+	"github.com/kitex-contrib/obs-opentelemetry/provider"
+	oteltracing "github.com/kitex-contrib/obs-opentelemetry/tracing"
 	"github.com/prometheus/client_golang/prometheus"
+	"github.com/prometheus/client_golang/prometheus/collectors"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
+	"go.opentelemetry.io/otel"
+	"go.opentelemetry.io/otel/attribute"
+	"go.opentelemetry.io/otel/codes"
 )
 
 type gateway struct {
@@ -47,24 +57,37 @@ func (g *gateway) handleMetadata(w http.ResponseWriter, r *http.Request) {
 		v := int32(n)
 		delay = &v
 	}
+	ctx, span := otel.Tracer("oncall-lab/gateway").Start(r.Context(), "HTTP GET /metadata")
+	defer span.End()
+	span.SetAttributes(attribute.String("lab.zone", getEnv("LAB_ZONE", "standalone")), attribute.String("lab.instance", getEnv("LAB_INSTANCE", "gateway")))
+	traceID := span.SpanContext().TraceID().String()
 	begin := time.Now()
-	resp, err := g.rpc.GetMetadata(r.Context(), &metadata.GetMetadataRequest{ArticleId: id, DelayMs: delay})
+	resp, err := g.rpc.GetMetadata(ctx, &metadata.GetMetadataRequest{ArticleId: id, DelayMs: delay})
 	dur := time.Since(begin)
 	result := "success"
+	errorCode := "none"
 	status := http.StatusOK
 	if err != nil {
 		result = "rpc_error"
+		errorCode = "rpc_other_error"
 		status = http.StatusBadGateway
 		if kerrors.IsTimeoutError(err) || errors.Is(err, context.DeadlineExceeded) {
 			result = "timeout"
+			errorCode = "rpc_timeout"
 			status = http.StatusGatewayTimeout
+		} else if bizErr, ok := kerrors.FromBizStatusError(err); ok {
+			errorCode = fmt.Sprintf("biz_%d", bizErr.BizStatusCode())
 		}
-		g.log.Error("synthetic Kitex RPC failed", "result", result, "duration_ms", dur.Milliseconds(), "error", err.Error())
+		span.RecordError(err)
+		span.SetStatus(codes.Error, result)
+		g.log.Error("synthetic Kitex RPC failed", "result", result, "error_code", errorCode, "duration_ms", dur.Milliseconds(), "trace_id", traceID, "zone", getEnv("LAB_ZONE", "standalone"), "instance", getEnv("LAB_INSTANCE", "gateway"), "error", err.Error())
 	} else {
-		g.log.Info("synthetic Kitex RPC completed", "result", result, "duration_ms", dur.Milliseconds())
+		g.log.Info("synthetic Kitex RPC completed", "result", result, "error_code", errorCode, "duration_ms", dur.Milliseconds(), "trace_id", traceID, "zone", getEnv("LAB_ZONE", "standalone"), "instance", getEnv("LAB_INSTANCE", "gateway"))
 	}
-	g.requests.WithLabelValues(result).Inc()
+	g.requests.WithLabelValues(result, errorCode).Inc()
 	g.duration.Observe(dur.Seconds())
+	w.Header().Set("X-Lab-Zone", getEnv("LAB_ZONE", "standalone"))
+	w.Header().Set("X-Lab-Instance", getEnv("LAB_INSTANCE", "gateway"))
 	w.Header().Set("Content-Type", "application/json; charset=utf-8")
 	w.WriteHeader(status)
 	if err != nil {
@@ -75,21 +98,46 @@ func (g *gateway) handleMetadata(w http.ResponseWriter, r *http.Request) {
 }
 
 func main() {
-	log := slog.New(slog.NewJSONHandler(os.Stdout, nil))
+	log, closeLog := lablog.New("gateway")
+	defer closeLog()
+	telemetry := provider.NewOpenTelemetryProvider(
+		provider.WithServiceName("GatewayService"),
+		provider.WithDeploymentEnvironment("lab"),
+		provider.WithResourceAttribute(attribute.String("service.instance.id", getEnv("LAB_INSTANCE", "gateway"))),
+		provider.WithResourceAttribute(attribute.String("lab.zone", getEnv("LAB_ZONE", "standalone"))),
+		provider.WithExportEndpoint(getEnv("OTEL_EXPORTER_ENDPOINT", "tempo:4317")),
+		provider.WithInsecure(),
+		provider.WithEnableMetrics(false), // Kitex Prometheus metrics already cover RED.
+	)
+	if telemetry == nil {
+		log.Error("OpenTelemetry trace provider is disabled")
+		os.Exit(1)
+	}
+	defer func() {
+		shutdownCtx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+		defer cancel()
+		if err := telemetry.Shutdown(shutdownCtx); err != nil {
+			log.Error("OpenTelemetry shutdown failed", "error", err)
+		}
+	}()
 	addr := getEnv("HTTP_LISTEN", ":8080")
 	rpcAddress := getEnv("METADATA_RPC_ADDR", "metadata:8888")
+	registry := prometheus.NewRegistry()
 	rpc, err := metadataservice.NewClient("MetadataService",
 		client.WithHostPorts(rpcAddress),
+		client.WithClientBasicInfo(&rpcinfo.EndpointBasicInfo{ServiceName: "GatewayService"}),
+		client.WithSuite(oteltracing.NewClientSuite()),
 		client.WithRPCTimeout(1200*time.Millisecond),
-		client.WithConnectTimeout(200*time.Millisecond))
+		client.WithConnectTimeout(200*time.Millisecond),
+		client.WithTracer(kitexprom.NewClientTracer("", "", kitexprom.WithRegistry(registry), kitexprom.WithDisableServer(true))))
 	if err != nil {
 		log.Error("create Kitex client", "error", err)
 		os.Exit(1)
 	}
-	reqs := prometheus.NewCounterVec(prometheus.CounterOpts{Name: "rpc_client_requests_total", Help: "Synthetic Kitex RPC client outcomes."}, []string{"result"})
+	reqs := prometheus.NewCounterVec(prometheus.CounterOpts{Name: "rpc_client_requests_total", Help: "Synthetic Kitex RPC client outcomes."}, []string{"result", "error_code"})
 	dur := prometheus.NewHistogram(prometheus.HistogramOpts{Name: "rpc_client_duration_seconds", Help: "Kitex GetMetadata RPC duration observed at the gateway."})
-	registry := prometheus.NewRegistry()
 	registry.MustRegister(reqs, dur)
+	registry.MustRegister(collectors.NewGoCollector(), collectors.NewProcessCollector(collectors.ProcessCollectorOpts{}))
 	g := &gateway{rpc: rpc, requests: reqs, duration: dur, log: log}
 	mux := http.NewServeMux()
 	mux.HandleFunc("/metadata", g.handleMetadata)
@@ -104,7 +152,7 @@ func main() {
 		defer cancel()
 		_ = srv.Shutdown(shutdownCtx)
 	}()
-	log.Info("Gateway listening", "address", addr, "rpc_target", rpcAddress)
+	log.Info("Gateway listening", "address", addr, "rpc_target", rpcAddress, "zone", getEnv("LAB_ZONE", "standalone"), "instance", getEnv("LAB_INSTANCE", "gateway"))
 	if err := srv.ListenAndServe(); err != nil && !errors.Is(err, http.ErrServerClosed) {
 		log.Error("gateway terminated", "error", err)
 		os.Exit(1)

@@ -14,6 +14,10 @@ import (
 )
 
 func main() {
+	if os.Getenv("SCENARIO") == "zone-timeout" {
+		runZoneScenario()
+		return
+	}
 	log := slog.New(slog.NewJSONHandler(os.Stdout, nil))
 	gateway := env("GATEWAY_URL", "http://gateway:8080/metadata")
 	duration := time.Duration(envInt("DURATION_SECONDS", 45)) * time.Second

@@ -1,0 +1,115 @@
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: oncall-lab
+  labels:
+    purpose: synthetic-oncall
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: metadata
+  namespace: oncall-lab
+  annotations:
+    oncall-lab/experiment: "kubernetes-pod-lifecycle"
+spec:
+  replicas: 6
+  revisionHistoryLimit: 3
+  strategy:
+    type: RollingUpdate
+    rollingUpdate:
+      maxSurge: 1
+      maxUnavailable: 1
+  selector:
+    matchLabels: {app: metadata}
+  template:
+    metadata:
+      labels: {app: metadata, project: oncall-lab}
+    spec:
+      terminationGracePeriodSeconds: 20
+      topologySpreadConstraints:
+        - maxSkew: 1
+          topologyKey: topology.kubernetes.io/zone
+          whenUnsatisfiable: DoNotSchedule
+          labelSelector:
+            matchLabels: {app: metadata}
+      containers:
+        - name: metadata
+          image: oncall-lab-metadata:local
+          imagePullPolicy: Never
+          ports:
+            - {name: thrift, containerPort: 8888}
+            - {name: metrics, containerPort: 9091}
+          env:
+            - {name: RPC_LISTEN, value: ":8888"}
+            - {name: METRICS_LISTEN, value: ":9091"}
+            - {name: LAB_UNREADY_FILE, value: "/tmp/oncall-not-ready"}
+            - name: LAB_INSTANCE
+              valueFrom:
+                fieldRef: {fieldPath: metadata.name}
+          readinessProbe:
+            httpGet: {path: /readyz, port: metrics}
+            periodSeconds: 2
+            failureThreshold: 1
+          livenessProbe:
+            httpGet: {path: /healthz, port: metrics}
+            periodSeconds: 8
+            failureThreshold: 3
+          lifecycle:
+            preStop:
+              exec: {command: ["/bin/sh", "-c", "sleep 3"]}
+          resources:
+            requests: {cpu: 50m, memory: 64Mi}
+            limits: {cpu: 400m, memory: 300Mi}
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: metadata
+  namespace: oncall-lab
+spec:
+  selector: {app: metadata}
+  ports:
+    - {name: thrift, port: 8888, targetPort: thrift}
+    - {name: metrics, port: 9091, targetPort: metrics}
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: gateway
+  namespace: oncall-lab
+spec:
+  replicas: 1
+  selector:
+    matchLabels: {app: gateway}
+  template:
+    metadata:
+      labels: {app: gateway, project: oncall-lab}
+    spec:
+      terminationGracePeriodSeconds: 15
+      containers:
+        - name: gateway
+          image: oncall-lab-gateway:local
+          imagePullPolicy: Never
+          ports: [{name: http, containerPort: 8080}]
+          env:
+            - {name: HTTP_LISTEN, value: ":8080"}
+            - {name: METADATA_RPC_ADDR, value: "metadata:8888"}
+            - name: LAB_INSTANCE
+              valueFrom:
+                fieldRef: {fieldPath: metadata.name}
+          readinessProbe:
+            httpGet: {path: /healthz, port: http}
+            periodSeconds: 3
+          resources:
+            requests: {cpu: 30m, memory: 64Mi}
+            limits: {cpu: 400m, memory: 300Mi}
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: gateway
+  namespace: oncall-lab
+spec:
+  selector: {app: gateway}
+  ports: [{name: http, port: 8080, targetPort: http}]

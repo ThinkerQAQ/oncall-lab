@@ -1,6 +1,7 @@
 name: Validate
 on:
   push:
+    branches: [main]
   pull_request:
 
 jobs:
@@ -14,9 +15,70 @@ jobs:
           cache: true
       - run: go test ./...
       - run: go vet ./...
+      - name: Verify synthetic evidence checker
+        run: python3 -m unittest discover -s scripts -p "test_*.py"
+      - name: Validate Kubernetes experiment helpers
+        run: |
+          python3 -m unittest discover -s k8s -p "test_*.py"
+          python3 -m compileall -q k8s scripts
+          for script in k8s/*.sh scripts/scenarios/*.sh; do bash -n "$script"; done
       - name: Validate Docker Compose
         run: GRAFANA_ADMIN_PASSWORD=ci-only-placeholder docker compose config --quiet
       - name: Build experiment containers
         run: docker compose build metadata gateway loadgen
         env:
           GRAFANA_ADMIN_PASSWORD: ci-only-placeholder
+      - name: Validate logical-zone topology
+        run: docker compose -f compose.yaml -f compose.zones.yaml config --quiet
+        env:
+          GRAFANA_ADMIN_PASSWORD: ci-only-placeholder
+      - name: Check that zone instances are real and correctly routed
+        run: docker compose -f compose.yaml -f compose.zones.yaml config --format json | python3 scripts/check_zone_topology.py
+        env:
+          GRAFANA_ADMIN_PASSWORD: ci-only-placeholder
+      - name: Smoke test real Kitex RPC in one Docker zone
+        env:
+          GRAFANA_ADMIN_PASSWORD: ci-only-placeholder
+        run: |
+          docker compose -f compose.yaml -f compose.zones.yaml build metadata gateway
+          docker compose -f compose.yaml -f compose.zones.yaml up -d --no-build promtail tempo mailpit grafana metadata-zone-a1 gateway-zone-a1
+          for i in $(seq 1 20); do
+            if curl -fsS http://127.0.0.1:28081/healthz; then break; fi
+            sleep 2
+          done
+          # Contact-point delivery configuration must load in the actual Grafana.
+          for i in $(seq 1 30); do
+            if curl -fsS http://127.0.0.1:23000/api/health > /dev/null && curl -fsS http://127.0.0.1:28025/api/v1/info > /dev/null; then break; fi
+            sleep 2
+          done
+          curl -fsS -u "demo:$GRAFANA_ADMIN_PASSWORD" http://127.0.0.1:23000/api/v1/provisioning/contact-points |
+            python3 -c 'import json,sys;items=json.load(sys.stdin);assert any(x.get("name")=="oncall-lab-local-inbox" and x.get("type")=="email" and ".CommonLabels.priority" in x.get("settings",{}).get("subject","") for x in items)'
+          curl -fsS -u "demo:$GRAFANA_ADMIN_PASSWORD" http://127.0.0.1:23000/api/v1/provisioning/alert-rules |
+            python3 -c 'import json,sys;items=json.load(sys.stdin);assert {(x.get("labels",{}).get("priority"),x.get("labels",{}).get("severity")) for x in items}=={("P1","critical"),("P2","warning")}'
+          curl -fsS -u "demo:$GRAFANA_ADMIN_PASSWORD" http://127.0.0.1:23000/api/v1/provisioning/policies |
+            python3 -c 'import json,sys;cfg=json.load(sys.stdin);assert cfg["receiver"]=="oncall-lab-local-inbox"'
+          curl -fsS 'http://127.0.0.1:28081/metadata?id=ci'
+          test "$(curl -sS -o /dev/null -w '%{http_code}' 'http://127.0.0.1:28081/metadata?id=ci&delay_ms=1500')" = 504
+          test "$(curl -sS -o /dev/null -w '%{http_code}' 'http://127.0.0.1:28081/metadata?id=synthetic-application-error')" = 502
+          curl -fsS 'http://127.0.0.1:28081/metrics' | grep -q 'rpc_client_requests_total{error_code="biz_2101",result="rpc_error"}'
+          curl -fsS 'http://127.0.0.1:28081/metrics' | grep -q 'rpc_client_requests_total{error_code="rpc_timeout",result="timeout"}'
+          curl -fsS 'http://127.0.0.1:28081/metrics' | grep -q '^process_resident_memory_bytes '
+          curl -fsS 'http://127.0.0.1:28081/metrics' | grep -q '^process_cpu_seconds_total '
+
+          # Assert Tempo received the real HTTP -> Kitex client -> Kitex server chain.
+          trace_id=$(docker logs oncall-lab-gateway-zone-a1-1 2>&1 | grep 'synthetic Kitex RPC completed' | grep -oE '"trace_id":"[a-f0-9]{32}"' | tail -1 | cut -d '"' -f4)
+          test -n "$trace_id"
+          for i in $(seq 1 20); do
+            if curl -fsS "http://127.0.0.1:23200/api/traces/$trace_id" > /tmp/oncall-ci-trace.json; then
+              if python3 scripts/verify_trace.py /tmp/oncall-ci-trace.json; then
+                for j in $(seq 1 12); do
+                  if curl -fsSG --data-urlencode "query={job=\"oncall-lab\"} |= \"$trace_id\"" --data-urlencode 'limit=30' http://127.0.0.1:23100/loki/api/v1/query_range > /tmp/oncall-ci-loki.json; then
+                    if python3 scripts/verify_loki.py /tmp/oncall-ci-loki.json "$trace_id"; then exit 0; fi
+                  fi
+                  sleep 2
+                done
+              fi
+            fi
+            sleep 2
+          done
+          exit 1

@@ -20,6 +20,8 @@ dist/
 bin/
 
 # Tooling and editor state
+__pycache__/
+*.pyc
 .serena/
 .idea/
 .vscode/

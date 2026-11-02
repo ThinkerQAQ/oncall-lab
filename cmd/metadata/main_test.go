@@ -6,6 +6,7 @@ import (
 	"testing"
 
 	"github.com/ThinkerQAQ/oncall-lab/kitex_gen/metadata"
+	"github.com/cloudwego/kitex/pkg/kerrors"
 	"github.com/prometheus/client_golang/prometheus"
 )
 
@@ -43,5 +44,14 @@ func TestGetMetadataHonorsCancellation(t *testing.T) {
 	_, err := h.GetMetadata(ctx, &metadata.GetMetadataRequest{ArticleId: "demo", DelayMs: &slow})
 	if !errors.Is(err, context.Canceled) {
 		t.Fatalf("expected cancellation, got %v", err)
+	}
+}
+
+func TestGetMetadataSyntheticApplicationError(t *testing.T) {
+	h := testHandler()
+	_, err := h.GetMetadata(context.Background(), &metadata.GetMetadataRequest{ArticleId: "synthetic-application-error"})
+	bizErr, ok := kerrors.FromBizStatusError(err)
+	if !ok || bizErr.BizStatusCode() != 2101 {
+		t.Fatalf("expected Kitex synthetic biz error code 2101, got %v", err)
 	}
 }
