@@ -24,12 +24,16 @@ jobs:
         run: docker compose -f compose.yaml -f compose.zones.yaml config --quiet
         env:
           GRAFANA_ADMIN_PASSWORD: ci-only-placeholder
+      - name: Check that zone instances are real and correctly routed
+        run: docker compose -f compose.yaml -f compose.zones.yaml config --format json | python3 scripts/check_zone_topology.py
+        env:
+          GRAFANA_ADMIN_PASSWORD: ci-only-placeholder
       - name: Smoke test real Kitex RPC in one Docker zone
         env:
           GRAFANA_ADMIN_PASSWORD: ci-only-placeholder
         run: |
           docker compose -f compose.yaml -f compose.zones.yaml build metadata gateway
-          docker compose -f compose.yaml -f compose.zones.yaml up -d --no-build metadata-zone-a gateway-zone-a1
+          docker compose -f compose.yaml -f compose.zones.yaml up -d --no-build metadata-zone-a1 gateway-zone-a1
           for i in $(seq 1 20); do
             if curl -fsS http://127.0.0.1:28081/healthz; then break; fi
             sleep 2

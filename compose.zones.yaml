@@ -10,12 +10,27 @@ services:
     volumes:
       - ./observability/prometheus/prometheus-zones.yml:/etc/prometheus/prometheus-zones.yml:ro
     networks: [default, zone-a, zone-b, zone-c]
-  metadata-zone-a:
+  metadata-zone-a1:
     image: oncall-lab-metadata:local
     environment:
       RPC_LISTEN: ":8888"
       METRICS_LISTEN: ":9091"
       LAB_ZONE: "zone-a"
+      LAB_INSTANCE: "metadata-zone-a1"
+    networks: [zone-a]
+    healthcheck:
+      test: ["CMD", "wget", "-q", "-O", "/dev/null", "http://127.0.0.1:9091/healthz"]
+      interval: 5s
+      timeout: 3s
+      retries: 15
+      start_period: 10s
+  metadata-zone-a2:
+    image: oncall-lab-metadata:local
+    environment:
+      RPC_LISTEN: ":8888"
+      METRICS_LISTEN: ":9091"
+      LAB_ZONE: "zone-a"
+      LAB_INSTANCE: "metadata-zone-a2"
     networks: [zone-a]
     healthcheck:
       test: ["CMD", "wget", "-q", "-O", "/dev/null", "http://127.0.0.1:9091/healthz"]
@@ -26,11 +41,11 @@ services:
   gateway-zone-a1:
     image: oncall-lab-gateway:local
     depends_on:
-      metadata-zone-a:
+      metadata-zone-a1:
         condition: service_healthy
     environment:
       HTTP_LISTEN: ":8080"
-      METADATA_RPC_ADDR: "metadata-zone-a:8888"
+      METADATA_RPC_ADDR: "metadata-zone-a1:8888"
       LAB_ZONE: "zone-a"
       LAB_INSTANCE: "gateway-zone-a1"
     networks: [default, zone-a]
@@ -45,11 +60,11 @@ services:
   gateway-zone-a2:
     image: oncall-lab-gateway:local
     depends_on:
-      metadata-zone-a:
+      metadata-zone-a2:
         condition: service_healthy
     environment:
       HTTP_LISTEN: ":8080"
-      METADATA_RPC_ADDR: "metadata-zone-a:8888"
+      METADATA_RPC_ADDR: "metadata-zone-a2:8888"
       LAB_ZONE: "zone-a"
       LAB_INSTANCE: "gateway-zone-a2"
     networks: [default, zone-a]
@@ -59,12 +74,27 @@ services:
       timeout: 3s
       retries: 15
       start_period: 10s
-  metadata-zone-b:
+  metadata-zone-b1:
     image: oncall-lab-metadata:local
     environment:
       RPC_LISTEN: ":8888"
       METRICS_LISTEN: ":9091"
       LAB_ZONE: "zone-b"
+      LAB_INSTANCE: "metadata-zone-b1"
+    networks: [zone-b]
+    healthcheck:
+      test: ["CMD", "wget", "-q", "-O", "/dev/null", "http://127.0.0.1:9091/healthz"]
+      interval: 5s
+      timeout: 3s
+      retries: 15
+      start_period: 10s
+  metadata-zone-b2:
+    image: oncall-lab-metadata:local
+    environment:
+      RPC_LISTEN: ":8888"
+      METRICS_LISTEN: ":9091"
+      LAB_ZONE: "zone-b"
+      LAB_INSTANCE: "metadata-zone-b2"
     networks: [zone-b]
     healthcheck:
       test: ["CMD", "wget", "-q", "-O", "/dev/null", "http://127.0.0.1:9091/healthz"]
@@ -75,11 +105,11 @@ services:
   gateway-zone-b1:
     image: oncall-lab-gateway:local
     depends_on:
-      metadata-zone-b:
+      metadata-zone-b1:
         condition: service_healthy
     environment:
       HTTP_LISTEN: ":8080"
-      METADATA_RPC_ADDR: "metadata-zone-b:8888"
+      METADATA_RPC_ADDR: "metadata-zone-b1:8888"
       LAB_ZONE: "zone-b"
       LAB_INSTANCE: "gateway-zone-b1"
     networks: [default, zone-b]
@@ -94,11 +124,11 @@ services:
   gateway-zone-b2:
     image: oncall-lab-gateway:local
     depends_on:
-      metadata-zone-b:
+      metadata-zone-b2:
         condition: service_healthy
     environment:
       HTTP_LISTEN: ":8080"
-      METADATA_RPC_ADDR: "metadata-zone-b:8888"
+      METADATA_RPC_ADDR: "metadata-zone-b2:8888"
       LAB_ZONE: "zone-b"
       LAB_INSTANCE: "gateway-zone-b2"
     networks: [default, zone-b]
@@ -108,12 +138,27 @@ services:
       timeout: 3s
       retries: 15
       start_period: 10s
-  metadata-zone-c:
+  metadata-zone-c1:
     image: oncall-lab-metadata:local
     environment:
       RPC_LISTEN: ":8888"
       METRICS_LISTEN: ":9091"
       LAB_ZONE: "zone-c"
+      LAB_INSTANCE: "metadata-zone-c1"
+    networks: [zone-c]
+    healthcheck:
+      test: ["CMD", "wget", "-q", "-O", "/dev/null", "http://127.0.0.1:9091/healthz"]
+      interval: 5s
+      timeout: 3s
+      retries: 15
+      start_period: 10s
+  metadata-zone-c2:
+    image: oncall-lab-metadata:local
+    environment:
+      RPC_LISTEN: ":8888"
+      METRICS_LISTEN: ":9091"
+      LAB_ZONE: "zone-c"
+      LAB_INSTANCE: "metadata-zone-c2"
     networks: [zone-c]
     healthcheck:
       test: ["CMD", "wget", "-q", "-O", "/dev/null", "http://127.0.0.1:9091/healthz"]
@@ -124,11 +169,11 @@ services:
   gateway-zone-c1:
     image: oncall-lab-gateway:local
     depends_on:
-      metadata-zone-c:
+      metadata-zone-c1:
         condition: service_healthy
     environment:
       HTTP_LISTEN: ":8080"
-      METADATA_RPC_ADDR: "metadata-zone-c:8888"
+      METADATA_RPC_ADDR: "metadata-zone-c1:8888"
       LAB_ZONE: "zone-c"
       LAB_INSTANCE: "gateway-zone-c1"
     networks: [default, zone-c]
@@ -143,11 +188,11 @@ services:
   gateway-zone-c2:
     image: oncall-lab-gateway:local
     depends_on:
-      metadata-zone-c:
+      metadata-zone-c2:
         condition: service_healthy
     environment:
       HTTP_LISTEN: ":8080"
-      METADATA_RPC_ADDR: "metadata-zone-c:8888"
+      METADATA_RPC_ADDR: "metadata-zone-c2:8888"
       LAB_ZONE: "zone-c"
       LAB_INSTANCE: "gateway-zone-c2"
     networks: [default, zone-c]

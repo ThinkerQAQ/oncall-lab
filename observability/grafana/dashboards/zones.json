@@ -2,7 +2,7 @@
   "uid": "oncall-zones",
   "title": "Oncall Lab · Logical Zones (Synthetic)",
   "schemaVersion": 40,
-  "version": 1,
+  "version": 2,
   "time": {
     "from": "now-15m",
     "to": "now"
@@ -148,7 +148,7 @@
     {
       "id": 6,
       "type": "timeseries",
-      "title": "Kitex server requests by zone",
+      "title": "Kitex server requests by actual Metadata instance",
       "gridPos": {
         "h": 8,
         "w": 12,
@@ -162,8 +162,8 @@
       "targets": [
         {
           "refId": "A",
-          "expr": "sum by (zone) (rate(rpc_server_requests_total{zone=~\"zone-.*\"}[30s]))",
-          "legendFormat": "{{zone}}"
+          "expr": "sum by (zone, instance) (rate(rpc_server_requests_total{zone=~\"zone-.*\"}[30s]))",
+          "legendFormat": "{{zone}} / {{instance}}"
         }
       ],
       "fieldConfig": {
@@ -200,7 +200,7 @@
     {
       "id": 8,
       "type": "timeseries",
-      "title": "Prometheus target status",
+      "title": "Gateway and Metadata Prometheus target status",
       "gridPos": {
         "h": 8,
         "w": 12,

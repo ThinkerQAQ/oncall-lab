@@ -17,9 +17,9 @@ scrape_configs:
     static_configs:
       - targets: ["metadata:9091"]
         labels: {env: "lab", zone: "standalone"}
-      - targets: ["metadata-zone-a:9091"]
+      - targets: ["metadata-zone-a1:9091", "metadata-zone-a2:9091"]
         labels: {env: "lab", zone: "zone-a"}
-      - targets: ["metadata-zone-b:9091"]
+      - targets: ["metadata-zone-b1:9091", "metadata-zone-b2:9091"]
         labels: {env: "lab", zone: "zone-b"}
-      - targets: ["metadata-zone-c:9091"]
+      - targets: ["metadata-zone-c1:9091", "metadata-zone-c2:9091"]
         labels: {env: "lab", zone: "zone-c"}
