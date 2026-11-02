@@ -16,7 +16,9 @@ Build a reproducible, independent fault-investigation lab for a public engineeri
 - kitex_gen/: generated Go client/server code; regenerate from the IDL, do not hand-edit.
 - cmd/metadata/: actual Kitex RPC server.
 - cmd/gateway/: HTTP entrypoint that makes real Kitex RPC calls.
-- cmd/loadgen/: reserved for controlled synthetic traffic.
+- cmd/loadgen/: bounded synthetic traffic generator. The zoned scenario targets actual Gateway containers and never external hosts.
+- compose.zones.yaml: optional three-logical-zone topology, with two real Gateway containers and one Metadata container per zone. All zones remain on one Docker Desktop host; do not present them as real physical availability zones.
+- observability/prometheus/prometheus-zones.yml: actual container scrape targets with logical zone labels.
 - observability/: Grafana/Prometheus/Loki/Tempo configuration.
 - Dockerfile: shared multistage image build, selected with TARGET.
 - compose.yaml: single entrypoint for reproducible local environments.
@@ -48,6 +50,19 @@ docker compose ps
 ~~~
 
 If Docker Desktop is not shared with WSL, report the blocker instead of claiming the containers were tested. Go tests are not equivalent to a successful Docker build.
+
+### Independent logical-zone experiment
+
+Base images are built once and reused by the real Gateway/Metadata containers in all three zones. This is a **synthetic application-level fault-injection demonstration on one physical Docker host**, not a three-datacenter or network-partition test. Every Gateway DNS target corresponds to one real Compose container. Only a controlled 20% subset of the `zone-a` requests receive an injected delay during the incident phase; Kitex itself enforces the timeout.
+
+~~~sh
+docker compose -f compose.yaml -f compose.zones.yaml up -d --build
+docker compose -f compose.yaml -f compose.zones.yaml run --rm -e BASELINE_SECONDS=10 -e INCIDENT_SECONDS=20 -e RECOVERY_SECONDS=10 loadgen-zones
+~~~
+
+The default run has longer phases (25s / 50s / 25s). Query the Prometheus `kitex-gateway` job using `zone` and `instance` labels or open the `oncall-zones` Grafana dashboard. Framework-generated RPC counters use the `kitex_client_throughput` and `kitex_server_throughput` names, and can be compared to the application-observed timeout counters. Do not interpret server-success and client-timeout differences as proof of a specific network root cause.
+
+This scenario is not a substitute for Kubernetes rolling-updates or discovery-convergence experiments. Those require separate Kind/Kubernetes topology and explicit test evidence.
 
 ## Git workflow
 

@@ -1,0 +1,25 @@
+# Scrape the actual containers. Prometheus target instance identifies the DNS service.
+global:
+  scrape_interval: 5s
+  evaluation_interval: 5s
+scrape_configs:
+  - job_name: kitex-gateway
+    static_configs:
+      - targets: ["gateway:8080"]
+        labels: {env: "lab", zone: "standalone"}
+      - targets: ["gateway-zone-a1:8080", "gateway-zone-a2:8080"]
+        labels: {env: "lab", zone: "zone-a"}
+      - targets: ["gateway-zone-b1:8080", "gateway-zone-b2:8080"]
+        labels: {env: "lab", zone: "zone-b"}
+      - targets: ["gateway-zone-c1:8080", "gateway-zone-c2:8080"]
+        labels: {env: "lab", zone: "zone-c"}
+  - job_name: kitex-metadata
+    static_configs:
+      - targets: ["metadata:9091"]
+        labels: {env: "lab", zone: "standalone"}
+      - targets: ["metadata-zone-a:9091"]
+        labels: {env: "lab", zone: "zone-a"}
+      - targets: ["metadata-zone-b:9091"]
+        labels: {env: "lab", zone: "zone-b"}
+      - targets: ["metadata-zone-c:9091"]
+        labels: {env: "lab", zone: "zone-c"}

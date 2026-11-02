@@ -1,0 +1,188 @@
+# Independent Docker networks model logical fault domains, NOT physical AZs.
+name: oncall-lab
+networks:
+  zone-a: {}
+  zone-b: {}
+  zone-c: {}
+services:
+  prometheus:
+    command: ["--config.file=/etc/prometheus/prometheus-zones.yml", "--storage.tsdb.retention.time=12h"]
+    volumes:
+      - ./observability/prometheus/prometheus-zones.yml:/etc/prometheus/prometheus-zones.yml:ro
+    networks: [default, zone-a, zone-b, zone-c]
+  metadata-zone-a:
+    image: oncall-lab-metadata:local
+    environment:
+      RPC_LISTEN: ":8888"
+      METRICS_LISTEN: ":9091"
+      LAB_ZONE: "zone-a"
+    networks: [zone-a]
+    healthcheck:
+      test: ["CMD", "wget", "-q", "-O", "/dev/null", "http://127.0.0.1:9091/healthz"]
+      interval: 5s
+      timeout: 3s
+      retries: 15
+      start_period: 10s
+  gateway-zone-a1:
+    image: oncall-lab-gateway:local
+    depends_on:
+      metadata-zone-a:
+        condition: service_healthy
+    environment:
+      HTTP_LISTEN: ":8080"
+      METADATA_RPC_ADDR: "metadata-zone-a:8888"
+      LAB_ZONE: "zone-a"
+      LAB_INSTANCE: "gateway-zone-a1"
+    networks: [default, zone-a]
+    healthcheck:
+      test: ["CMD", "wget", "-q", "-O", "/dev/null", "http://127.0.0.1:8080/healthz"]
+      interval: 5s
+      timeout: 3s
+      retries: 15
+      start_period: 10s
+    ports:
+      - "127.0.0.1:28081:8080"
+  gateway-zone-a2:
+    image: oncall-lab-gateway:local
+    depends_on:
+      metadata-zone-a:
+        condition: service_healthy
+    environment:
+      HTTP_LISTEN: ":8080"
+      METADATA_RPC_ADDR: "metadata-zone-a:8888"
+      LAB_ZONE: "zone-a"
+      LAB_INSTANCE: "gateway-zone-a2"
+    networks: [default, zone-a]
+    healthcheck:
+      test: ["CMD", "wget", "-q", "-O", "/dev/null", "http://127.0.0.1:8080/healthz"]
+      interval: 5s
+      timeout: 3s
+      retries: 15
+      start_period: 10s
+  metadata-zone-b:
+    image: oncall-lab-metadata:local
+    environment:
+      RPC_LISTEN: ":8888"
+      METRICS_LISTEN: ":9091"
+      LAB_ZONE: "zone-b"
+    networks: [zone-b]
+    healthcheck:
+      test: ["CMD", "wget", "-q", "-O", "/dev/null", "http://127.0.0.1:9091/healthz"]
+      interval: 5s
+      timeout: 3s
+      retries: 15
+      start_period: 10s
+  gateway-zone-b1:
+    image: oncall-lab-gateway:local
+    depends_on:
+      metadata-zone-b:
+        condition: service_healthy
+    environment:
+      HTTP_LISTEN: ":8080"
+      METADATA_RPC_ADDR: "metadata-zone-b:8888"
+      LAB_ZONE: "zone-b"
+      LAB_INSTANCE: "gateway-zone-b1"
+    networks: [default, zone-b]
+    healthcheck:
+      test: ["CMD", "wget", "-q", "-O", "/dev/null", "http://127.0.0.1:8080/healthz"]
+      interval: 5s
+      timeout: 3s
+      retries: 15
+      start_period: 10s
+    ports:
+      - "127.0.0.1:28082:8080"
+  gateway-zone-b2:
+    image: oncall-lab-gateway:local
+    depends_on:
+      metadata-zone-b:
+        condition: service_healthy
+    environment:
+      HTTP_LISTEN: ":8080"
+      METADATA_RPC_ADDR: "metadata-zone-b:8888"
+      LAB_ZONE: "zone-b"
+      LAB_INSTANCE: "gateway-zone-b2"
+    networks: [default, zone-b]
+    healthcheck:
+      test: ["CMD", "wget", "-q", "-O", "/dev/null", "http://127.0.0.1:8080/healthz"]
+      interval: 5s
+      timeout: 3s
+      retries: 15
+      start_period: 10s
+  metadata-zone-c:
+    image: oncall-lab-metadata:local
+    environment:
+      RPC_LISTEN: ":8888"
+      METRICS_LISTEN: ":9091"
+      LAB_ZONE: "zone-c"
+    networks: [zone-c]
+    healthcheck:
+      test: ["CMD", "wget", "-q", "-O", "/dev/null", "http://127.0.0.1:9091/healthz"]
+      interval: 5s
+      timeout: 3s
+      retries: 15
+      start_period: 10s
+  gateway-zone-c1:
+    image: oncall-lab-gateway:local
+    depends_on:
+      metadata-zone-c:
+        condition: service_healthy
+    environment:
+      HTTP_LISTEN: ":8080"
+      METADATA_RPC_ADDR: "metadata-zone-c:8888"
+      LAB_ZONE: "zone-c"
+      LAB_INSTANCE: "gateway-zone-c1"
+    networks: [default, zone-c]
+    healthcheck:
+      test: ["CMD", "wget", "-q", "-O", "/dev/null", "http://127.0.0.1:8080/healthz"]
+      interval: 5s
+      timeout: 3s
+      retries: 15
+      start_period: 10s
+    ports:
+      - "127.0.0.1:28083:8080"
+  gateway-zone-c2:
+    image: oncall-lab-gateway:local
+    depends_on:
+      metadata-zone-c:
+        condition: service_healthy
+    environment:
+      HTTP_LISTEN: ":8080"
+      METADATA_RPC_ADDR: "metadata-zone-c:8888"
+      LAB_ZONE: "zone-c"
+      LAB_INSTANCE: "gateway-zone-c2"
+    networks: [default, zone-c]
+    healthcheck:
+      test: ["CMD", "wget", "-q", "-O", "/dev/null", "http://127.0.0.1:8080/healthz"]
+      interval: 5s
+      timeout: 3s
+      retries: 15
+      start_period: 10s
+  loadgen-zones:
+    profiles: ["traffic"]
+    image: oncall-lab-loadgen:local
+    build:
+      context: .
+      args: {TARGET: loadgen}
+    networks: [default]
+    depends_on:
+      gateway-zone-a1:
+        condition: service_healthy
+      gateway-zone-a2:
+        condition: service_healthy
+      gateway-zone-b1:
+        condition: service_healthy
+      gateway-zone-b2:
+        condition: service_healthy
+      gateway-zone-c1:
+        condition: service_healthy
+      gateway-zone-c2:
+        condition: service_healthy
+    environment:
+      SCENARIO: "zone-timeout"
+      QPS: "22"
+      BASELINE_SECONDS: "25"
+      INCIDENT_SECONDS: "50"
+      ZONE_A_FAIL_PERCENT: "20"
+      RECOVERY_SECONDS: "25"
+      ZONE_ROUTES: "zone-a|http://gateway-zone-a1:8080/metadata|3,zone-a|http://gateway-zone-a2:8080/metadata|3,zone-b|http://gateway-zone-b1:8080/metadata|2,zone-b|http://gateway-zone-b2:8080/metadata|1,zone-c|http://gateway-zone-c1:8080/metadata|1,zone-c|http://gateway-zone-c2:8080/metadata|1"
+    restart: "no"

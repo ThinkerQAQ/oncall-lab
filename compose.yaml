@@ -1,6 +1,7 @@
 name: oncall-lab
 services:
   metadata:
+    image: oncall-lab-metadata:local
     build:
       context: .
       args:
@@ -17,6 +18,7 @@ services:
     restart: unless-stopped
 
   gateway:
+    image: oncall-lab-gateway:local
     build:
       context: .
       args:
@@ -38,6 +40,7 @@ services:
     restart: unless-stopped
 
   loadgen:
+    image: oncall-lab-loadgen:local
     profiles: ["traffic"]
     build:
       context: .

@@ -5,6 +5,7 @@ go 1.26.0
 require (
 	github.com/cloudwego/gopkg v0.2.1
 	github.com/cloudwego/kitex v0.16.4
+	github.com/kitex-contrib/monitor-prometheus v0.2.0
 	github.com/prometheus/client_golang v1.25.0
 )
 

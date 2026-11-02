@@ -12,7 +12,9 @@ import (
 
 	"github.com/ThinkerQAQ/oncall-lab/kitex_gen/metadata"
 	"github.com/ThinkerQAQ/oncall-lab/kitex_gen/metadata/metadataservice"
+	"github.com/cloudwego/kitex/pkg/rpcinfo"
 	"github.com/cloudwego/kitex/server"
+	kitexprom "github.com/kitex-contrib/monitor-prometheus"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
 )
@@ -69,8 +71,8 @@ func main() {
 			log.Error("metrics server terminated", "error", err)
 		}
 	}()
-	srv := metadataservice.NewServer(&handler{requests: requests, duration: duration}, server.WithServiceAddr(addr))
-	log.Info("Kitex metadata service listening", "rpc", address, "metrics", metricsAddr, "example_delay_ms", strconv.Itoa(1500))
+	srv := metadataservice.NewServer(&handler{requests: requests, duration: duration}, server.WithServiceAddr(addr), server.WithServerBasicInfo(&rpcinfo.EndpointBasicInfo{ServiceName: "MetadataService"}), server.WithTracer(kitexprom.NewServerTracer("", "", kitexprom.WithRegistry(registry), kitexprom.WithDisableServer(true))))
+	log.Info("Kitex metadata service listening", "rpc", address, "metrics", metricsAddr, "example_delay_ms", strconv.Itoa(1500), "zone", getEnv("LAB_ZONE", "standalone"))
 	if err := srv.Run(); err != nil {
 		log.Error("Kitex server terminated", "error", err)
 		os.Exit(1)
