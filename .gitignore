@@ -32,3 +32,7 @@ Thumbs.db
 
 # Go
 /vendor/
+
+# Local Devbox and Python development state
+.devbox/
+.venv/
